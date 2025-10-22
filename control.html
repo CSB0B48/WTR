@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Dashboard - Warangal Trading Ring</title>
+    <link rel="icon" type="image/png" href="FinWiz_Logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .dashboard-card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 2rem;
+            border: 1px solid #374151; /* gray-700 */
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            border: 1px solid #4b5563;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            border-color: #3b82f6;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+         .btn-primary:disabled {
+            background-color: #4b5563;
+            border-color: #4b5563;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: #d1d5db;
+        }
+        .btn-secondary.active {
+            background-color: #374151;
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .btn-secondary:hover:not(.active) {
+            background-color: #374151;
+        }
+        .table-container {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .round-buttons-container {
+            max-height: 45vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 p-4 lg:p-8">
+
+    <div class="w-full max-w-screen-2xl mx-auto">
+        <!-- added nav bar by nandan --> 
+        <nav class="mb-6 text-right">
+            <a href="monitor.html" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">
+                Go to Player Monitor &rarr;
+            </a>
+        </nav>
+
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-white text-center">Panel Dashboard</h1>
+            <p class="text-xl text-gray-400 mt-2 text-center">Market Data & Round Control</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Left Column: Controls -->
+            <div class="lg:col-span-1 space-y-8">
+                <!-- Box 1: File Upload -->
+                <div class="dashboard-card">
+                    <h2 class="text-2xl font-semibold text-white mb-4">1. Load Market Data</h2>
+                    <label for="csv-upload" class="block text-sm font-medium text-gray-400">Upload New CSV File</label>
+                    <input type="file" id="csv-upload" accept=".csv" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600">
+                </div>
+
+                <!-- Box 2: Round Control -->
+                <div class="dashboard-card">
+                    <h2 class="text-2xl font-semibold text-white mb-2">2. Control Rounds</h2>
+                    <p class="text-sm text-gray-400 mb-4">Select a round to activate.</p>
+                    <div id="round-buttons" class="round-buttons-container pr-2 grid grid-cols-1 gap-2">
+                       <p class="text-sm text-gray-500 col-span-1">Please upload a CSV with a 'Round' column first.</p>
+                    </div>
+                    <div class="mt-6 border-t border-gray-600 pt-6">
+                         <button id="set-active-round" class="btn btn-primary" disabled>Set Active Round</button>
+                         <p id="panel-status" class="text-center text-green-400 h-4 mt-2"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Data Display -->
+            <div class="lg:col-span-3">
+                 <div class="dashboard-card">
+                    <h2 class="text-2xl font-semibold text-white mb-4">Market Data Sheet</h2>
+                    <div id="table-container" class="table-container">
+                        <table id="csv-table" class="w-full text-sm text-left text-gray-400">
+                           <thead class="text-xs text-gray-300 uppercase bg-gray-700 sticky top-0">
+                                <!-- Header will be generated here -->
+                           </thead>
+                           <tbody>
+                                <tr><td id="table-placeholder" class="p-4 text-center">Loading saved data...</td></tr>
+                           </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Config ---
+        // SABSE ZAROORI STEP: Neeche diye gaye object ko apne Firebase project ke config se replace karein.
+        // Agar yeh galat hoga, toh data save aur load nahi hoga.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMX0otf01Gq7phSuuMix3CvzQaJJ5Cax0",
+                authDomain: "wtr-finwiz.firebaseapp.com",
+                projectId: "wtr-finwiz",
+                storageBucket: "wtr-finwiz.firebasestorage.app",
+                messagingSenderId: "343897117079",
+                appId: "1:343897117079:web:6d2a490c7ca743dcbf34d2",
+                measurementId: "G-BK6WYWHLWX"
+        };
+        
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+
+        // --- DOM Elements ---
+        const csvUpload = document.getElementById('csv-upload');
+        const csvTable = document.getElementById('csv-table');
+        const roundButtonsContainer = document.getElementById('round-buttons');
+        const setActiveRoundBtn = document.getElementById('set-active-round');
+        const panelStatus = document.getElementById('panel-status');
+        const tablePlaceholder = document.getElementById('table-placeholder');
+
+        let originalData = []; // To store the long-format data for Firebase
+        let selectedRound = null;
+
+        // --- Functions ---
+        
+        function pivotDataForDisplay(longData) {
+            if (longData.length === 0) return { pivotedData: [], companyHeaders: [] };
+            
+            const headers = Object.keys(longData[0]);
+            const roundHeader = headers.find(h => h.toUpperCase() === 'ROUND');
+            const companyHeader = headers.find(h => h.toUpperCase() === 'COMPANY');
+            const valueHeader = headers.find(h => h.toUpperCase() === 'VALUE');
+            
+            if (!roundHeader || !companyHeader || !valueHeader) {
+                console.error("CSV must contain 'Round', 'Company', and 'Value' columns for pivoting.");
+                return { pivotedData: [], companyHeaders: [] };
+            }
+
+            const companyHeaders = [...new Set(longData.map(row => row[companyHeader]))].sort();
+            const groupedByRound = {};
+
+            longData.forEach(row => {
+                const round = row[roundHeader];
+                const company = row[companyHeader];
+                const value = row[valueHeader];
+                
+                if (!groupedByRound[round]) {
+                    groupedByRound[round] = { [roundHeader]: round };
+                }
+                groupedByRound[round][company] = value;
+            });
+
+            const pivotedData = Object.values(groupedByRound).sort((a,b) => a[roundHeader] - b[roundHeader]);
+            return { pivotedData, companyHeaders };
+        }
+
+        function displayPivotedCSV(pivotedData, companyHeaders) {
+            const tableHead = csvTable.querySelector('thead');
+            const tableBody = csvTable.querySelector('tbody');
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (pivotedData.length === 0) {
+                 tableBody.innerHTML = '<tr><td id="table-placeholder" class="p-4 text-center">No data loaded. Please upload a CSV file with correct format.</td></tr>';
+                return;
+            }
+            
+            const allHeaders = ['Round', ...companyHeaders];
+
+            const headerRow = document.createElement('tr');
+            allHeaders.forEach(header => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.className = 'px-6 py-3';
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            pivotedData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'bg-gray-800 border-b border-gray-700';
+                allHeaders.forEach(header => {
+                    const td = document.createElement('td');
+                    td.className = 'px-6 py-4';
+                    td.textContent = row[header] || '-';
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        }
+        
+        function generateRoundButtons(data) {
+             const roundHeader = Object.keys(data[0] || {}).find(h => h.toUpperCase() === 'ROUND');
+            if(!roundHeader) {
+                roundButtonsContainer.innerHTML = '<p class="text-sm text-red-500 col-span-1">CSV must contain a "Round" column.</p>';
+                setActiveRoundBtn.disabled = true;
+                return;
+            }
+
+            const rounds = [...new Set(data.map(row => row[roundHeader]))].sort((a,b) => a-b);
+            roundButtonsContainer.innerHTML = '';
+            
+            rounds.forEach(roundNum => {
+                const button = document.createElement('button');
+                button.className = 'btn btn-secondary';
+                button.textContent = `Round ${roundNum}`;
+                button.dataset.round = roundNum;
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('#round-buttons .btn').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    selectedRound = roundNum;
+                });
+                roundButtonsContainer.appendChild(button);
+            });
+            setActiveRoundBtn.disabled = false;
+        }
+
+        async function saveDataToFirebase(dataToSave, headersToSave) {
+            try {
+                await signInAnonymously(auth);
+                const marketDataRef = doc(db, 'market', 'uploadedCSV');
+                await setDoc(marketDataRef, {
+                    headers: headersToSave,
+                    data: dataToSave,
+                    uploadedAt: new Date()
+                });
+                console.log("CSV data saved to Firebase.");
+            } catch (error) {
+                console.error("Error saving data to Firebase:", error);
+            }
+        }
+
+        async function loadDataFromFirebase() {
+             try {
+                await signInAnonymously(auth);
+                const marketDataRef = doc(db, 'market', 'uploadedCSV');
+                const docSnap = await getDoc(marketDataRef);
+
+                if (docSnap.exists()) {
+                    const saved = docSnap.data();
+                    originalData = saved.data || [];
+                    const { pivotedData, companyHeaders } = pivotDataForDisplay(originalData);
+                    displayPivotedCSV(pivotedData, companyHeaders);
+                    generateRoundButtons(originalData);
+                    console.log("Loaded saved CSV data from Firebase.");
+                } else {
+                    tablePlaceholder.textContent = 'No saved data. Please upload a CSV file.';
+                }
+
+             } catch(error) {
+                console.error("Error loading data from Firebase:", error);
+                 if (error.code === 'auth/invalid-api-key') {
+                     tablePlaceholder.textContent = 'Firebase API Key is invalid. Please update firebaseConfig.';
+                } else {
+                     tablePlaceholder.textContent = 'Could not load data. Check console and Firebase rules.';
+                }
+             }
+        }
+        
+        async function setActiveRound() {
+            if (selectedRound === null) {
+                panelStatus.textContent = 'Please select a round first.';
+                panelStatus.className = 'text-center text-red-400 h-4 mt-2';
+                return;
+            }
+
+            const roundHeader = Object.keys(originalData[0] || {}).find(h => h.toUpperCase() === 'ROUND');
+            const roundData = originalData.filter(row => row[roundHeader] === selectedRound);
+            
+            try {
+                 const marketDocRef = doc(db, 'market', 'currentRound');
+                 await setDoc(marketDocRef, {
+                     round: selectedRound,
+                     data: roundData,
+                     updatedAt: new Date()
+                 });
+                 panelStatus.textContent = `Round ${selectedRound} is now active!`;
+                 panelStatus.className = 'text-center text-green-400 h-4 mt-2';
+
+            } catch (error) {
+                 console.error("Error setting active round:", error);
+                 panelStatus.textContent = 'Error pushing data. Check console.';
+                 panelStatus.className = 'text-center text-red-400 h-4 mt-2';
+            }
+        }
+
+        // --- Event Listeners ---
+        csvUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').filter(row => row.trim() !== '');
+                const headers = rows[0].split(',').map(h => h.trim());
+                
+                originalData = rows.slice(1).map(row => {
+                    const values = row.split(',');
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = values[index] ? values[index].trim() : '';
+                    });
+                    return obj;
+                });
+                
+                const { pivotedData, companyHeaders } = pivotDataForDisplay(originalData);
+                displayPivotedCSV(pivotedData, companyHeaders);
+                generateRoundButtons(originalData);
+                saveDataToFirebase(originalData, headers);
+            };
+            reader.readAsText(file);
+        });
+        
+        setActiveRoundBtn.addEventListener('click', setActiveRound);
+        
+        document.addEventListener('DOMContentLoaded', loadDataFromFirebase);
+
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Access - Warangal Trading Ring</title>
+    <link rel="icon" type="image/png" href="FinWiz_Logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .auth-card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #374151; /* gray-700 */
+        }
+        .form-input {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="w-full max-w-md mx-auto p-4">
+        <div class="auth-card">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-white">Panel Access</h1>
+                <p class="text-gray-400">Please enter the access code to continue.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="access-code" class="block text-sm font-medium mb-1 text-gray-400">Access Code</label>
+                    <input type="password" id="access-code" class="form-input" placeholder="Enter secret code" required>
+                </div>
+                
+                <button id="submit-code-btn" class="btn btn-primary !mt-6">Enter</button>
+                <p id="error-message" class="text-red-500 text-sm text-center h-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const accessCodeInput = document.getElementById('access-code');
+        const submitBtn = document.getElementById('submit-code-btn');
+        const errorMessage = document.getElementById('error-message');
+        const correctCode = "goatedwtr";
+
+        function handleCodeSubmit() {
+            const enteredCode = accessCodeInput.value.trim();
+            if (enteredCode === correctCode) {
+                // Correct code, redirect to panel2.html
+                window.location.href = 'control.html';
+            } else {
+                // Incorrect code, show error
+                errorMessage.textContent = 'Incorrect access code. Please try again.';
+                accessCodeInput.value = ''; // Clear the input
+            }
+        }
+
+        submitBtn.addEventListener('click', handleCodeSubmit);
+        
+        // Allow submission on pressing Enter key
+        accessCodeInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                handleCodeSubmit();
+            }
+        });
+    </script>
+</body>
+</html>
+

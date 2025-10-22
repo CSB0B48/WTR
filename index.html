@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Warangal Trading Ring</title>
+    <link rel="icon" type="image/png" href="FinWiz_Logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .welcome-card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #374151; /* gray-700 */
+            text-align: center;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: block;
+            width: 100%;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .btn-secondary {
+            background-color: #4b5563; /* gray-600 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="w-full max-w-md mx-auto p-4">
+        <div class="welcome-card">
+            <img src="FinWiz_Logo.png" alt="Club Logo" 
+                 class="rounded-lg border-2 border-gray-700 object-cover mx-auto mb-6">
+            <h1 class="text-3xl font-bold text-white mb-2">Welcome to Warangal Trading Ring</h1>
+            <p class="text-lg text-gray-400 mb-8">Please select your role to continue.</p>
+            
+            <div class="space-y-4">
+                <a href="player.html" class="btn btn-primary">Player</a>
+                <a href="panel.html" class="btn btn-secondary">Panel</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

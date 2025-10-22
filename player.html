@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up / Login - Warangal Trading Ring</title>
+    <link rel="icon" type="image/png" href="FinWiz_Logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .auth-card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #374151; /* gray-700 */
+        }
+        .form-input {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+         .btn-primary:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="w-full max-w-md mx-auto p-4">
+        <div class="auth-card">
+            <div class="text-center mb-6">
+                <h1 id="form-title" class="text-3xl font-bold text-white">Create Account</h1>
+                <p class="text-gray-400">Enter your details to start trading.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div id="name-field">
+                    <label for="user-name" class="block text-sm font-medium mb-1 text-gray-400">Name</label>
+                    <input type="text" id="user-name" class="form-input" placeholder="Enter your full name" required>
+                </div>
+                <div>
+                    <label for="roll-number" class="block text-sm font-medium mb-1 text-gray-400">Roll Number</label>
+                    <input type="text" id="roll-number" class="form-input" placeholder="This will be your unique ID" required>
+                </div>
+                <div id="email-field">
+                    <label for="email-id" class="block text-sm font-medium mb-1 text-gray-400">Institute Mail ID</label>
+                    <input type="email" id="email-id" class="form-input" placeholder="Enter your institute email" required>
+                </div>
+                
+                <button id="submit-btn" class="btn btn-primary !mt-6">Sign Up</button>
+                <p id="error-message" class="text-red-500 text-sm text-center h-4"></p>
+            </div>
+
+            <div class="text-center mt-6">
+                <p id="toggle-text" class="text-sm text-gray-400">
+                    Already have an account? 
+                    <button id="toggle-mode" class="font-semibold text-blue-400 hover:text-blue-300">Login</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Config ---
+        // *******************************************************************
+        // ***** IMPORTANT / ZAROORI - ACTION REQUIRED / KARYAVAHI KI ZAROORAT HAI *****
+        // *******************************************************************
+        // The error is because the values below are placeholders.
+        // You MUST replace them with your actual Firebase project configuration.
+        // Go to your Firebase project settings -> General -> Your apps -> SDK setup and configuration
+        // Copy the firebaseConfig object and paste it below.
+        //
+        // Error isliye hai kyunki neeche di gayi values placeholders hain.
+        // Aapko apne asli Firebase project ke configuration se inhe badalna HOGA.
+        // Apne Firebase project settings -> General -> Your apps -> SDK setup and configuration par jaayein
+        // Wahan se firebaseConfig object copy karein aur neeche paste karein.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMX0otf01Gq7phSuuMix3CvzQaJJ5Cax0",
+            authDomain: "wtr-finwiz.firebaseapp.com",
+            projectId: "wtr-finwiz",
+            storageBucket: "wtr-finwiz.firebasestorage.app",
+            messagingSenderId: "343897117079",
+            appId: "1:343897117079:web:6d2a490c7ca743dcbf34d2",
+            measurementId: "G-BK6WYWHLWX"
+        };
+        
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+
+        // --- DOM Elements ---
+        const formTitle = document.getElementById('form-title');
+        const nameField = document.getElementById('name-field');
+        const emailField = document.getElementById('email-field');
+        const submitBtn = document.getElementById('submit-btn');
+        const toggleText = document.getElementById('toggle-text');
+        const errorMessage = document.getElementById('error-message');
+        
+        const userNameInput = document.getElementById('user-name');
+        const rollNumberInput = document.getElementById('roll-number');
+        const emailInput = document.getElementById('email-id');
+
+        let isLoginMode = false;
+
+        // --- Functions ---
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            errorMessage.textContent = ''; // Clear errors on mode switch
+
+            if (isLoginMode) {
+                // Switch to Login view
+                formTitle.textContent = 'Player Login';
+                nameField.style.display = 'none';
+                emailField.style.display = 'none';
+                submitBtn.textContent = 'Login';
+                toggleText.innerHTML = `Don't have an account? <button id="toggle-mode" class="font-semibold text-blue-400 hover:text-blue-300">Sign Up</button>`;
+            } else {
+                // Switch to Sign Up view
+                formTitle.textContent = 'Create Account';
+                nameField.style.display = 'block';
+                emailField.style.display = 'block';
+                submitBtn.textContent = 'Sign Up';
+                toggleText.innerHTML = `Already have an account? <button id="toggle-mode" class="font-semibold text-blue-400 hover:text-blue-300">Login</button>`;
+            }
+            // Re-add event listener to the new button inside the text
+            document.getElementById('toggle-mode').addEventListener('click', toggleAuthMode);
+        }
+
+        async function handleSubmit() {
+            const rollNumber = rollNumberInput.value.trim().toUpperCase();
+            
+            if (!rollNumber) {
+                errorMessage.textContent = 'Roll Number is required.';
+                return;
+            }
+            
+            errorMessage.textContent = '';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            try {
+                // Ensure user is authenticated anonymously to interact with Firestore
+                await signInAnonymously(auth);
+                const participantDocRef = doc(db, 'participants', rollNumber);
+
+                if (isLoginMode) {
+                    // --- Login Logic ---
+                    const docSnap = await getDoc(participantDocRef);
+                    if (docSnap.exists()) {
+                        // User exists, proceed to login
+                        localStorage.setItem('wtrPlayerRoll', rollNumber);
+                        window.location.href = 'main.html';
+                    } else {
+                        errorMessage.textContent = 'No account found with this Roll Number.';
+                    }
+                } else {
+                    // --- Sign Up Logic ---
+                    const name = userNameInput.value.trim();
+                    const email = emailInput.value.trim();
+
+                    if (!name || !email) {
+                        errorMessage.textContent = 'All fields are required for Sign Up.';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Sign Up';
+                        return;
+                    }
+
+                    const docSnap = await getDoc(participantDocRef);
+                    if (docSnap.exists()) {
+                        errorMessage.textContent = 'This Roll Number is already registered.';
+                    } else {
+                        // Create a new document for the new player
+                        await setDoc(participantDocRef, {
+                            name: name,
+                            rollNumber: rollNumber,
+                            email: email,
+                            createdAt: new Date(),
+                            //add these 3 line following-nks
+                            currentBalance: 10000,
+                            netPnl: 0,
+                            transactionCount: 0
+                        });
+                        localStorage.setItem('wtrPlayerRoll', rollNumber);
+                        window.location.href = 'main.html';
+                    }
+                }
+            } catch (error) {
+                console.error("Authentication Error:", error);
+                if (error.code === 'auth/invalid-api-key' || error.message.includes("API key not valid")) {
+                    errorMessage.textContent = 'Firebase API Key is not valid. Please check your configuration.';
+                } else {
+                    errorMessage.textContent = 'An error occurred. Please try again.';
+                }
+            } finally {
+                submitBtn.disabled = false;
+                 // Restore button text
+                submitBtn.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            }
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('toggle-mode').addEventListener('click', toggleAuthMode);
+        submitBtn.addEventListener('click', handleSubmit);
+    </script>
+</body>
+</html>
+

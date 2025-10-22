@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warangal Trading Ring - FinWiz</title>
+    <link rel="icon" type="image/png" href="FinWiz_Logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .dashboard-card, .calculator-card {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #374151; /* gray-700 */
+        }
+        .form-input {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .btn-primary:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .result-area {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 500;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #374151; /* gray-700 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .profit {
+            color: #22c55e; /* green-500 */
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+        .loss {
+            color: #ef4444; /* red-500 */
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+        .ledger-table {
+            width: 100%;
+            margin-top: 1.5rem;
+            border-collapse: collapse;
+        }
+        .data-table th, .ledger-table th, .data-table td, .ledger-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #374151; /* gray-700 */
+        }
+        .data-table th, .ledger-table th {
+            background-color: #374151; /* gray-700 */
+            color: #9ca3af; /* gray-400 */
+            font-size: 0.875rem;
+            text-transform: uppercase;
+             position: sticky; 
+             top: 0;
+        }
+        .data-table td, .ledger-table td {
+            color: #d1d5db; /* gray-300 */
+        }
+        .text-buy { color: #ef4444; }
+        .text-sell, .text-pnl-profit { color: #22c55e; }
+        .text-short { color: #a855f7; }
+        .text-cover { color: #f97316; }
+        .text-pnl-loss { color: #ef4444; }
+        .table-container {
+            max-height: 80vh; 
+            overflow-y: auto;
+        }
+        .overflow-x-auto {
+             overflow-x: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div id="app-container" class="w-full max-w-screen-2xl mx-auto p-4" style="display: none;">
+        <header class="flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-6 mb-8 p-4 rounded-lg bg-gray-800/50">
+            <div>
+                <h1 class="text-4xl font-bold text-white">Warangal Trading Ring</h1>
+                <p class="text-xl text-gray-400">FinWiz Trading Terminal</p>
+                 <div class="mt-2">
+                    <span id="player-roll" class="text-lg text-gray-300 font-semibold"></span>
+                </div>
+            </div>
+             <img src="FinWiz_Logo.png" alt="Club Logo"
+                  class="h-16 w-16 sm:h-24 sm:w-24 rounded-lg border-2 border-gray-700 object-cover">
+        </header>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div class="dashboard-card h-full lg:max-h-[85vh]">
+                <h2 class="text-2xl font-semibold text-white mb-4">
+                    Current Market: Round <span id="round-number">...</span>
+                </h2>
+                <div class="table-container">
+                     <table id="market-table" class="w-full text-sm text-left text-gray-400 data-table">
+                         <thead class="text-xs text-gray-300 uppercase bg-gray-700 sticky top-0"></thead>
+                         <tbody><tr><td class="p-4 text-center">Waiting for panel to start a round...</td></tr></tbody>
+                     </table>
+                </div>
+            </div>
+
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-6 text-center text-blue-400">Long Position</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="long-stock-ticker" class="block text-sm font-medium mb-1 text-gray-400">Company Code</label>
+                        <input type="text" id="long-stock-ticker" class="form-input" placeholder="e.g., 101">
+                    </div>
+                    <div>
+                        <label for="long-quantity" class="block text-sm font-medium mb-1 text-gray-400">Quantity</label>
+                        <input type="number" id="long-quantity" class="form-input" placeholder="e.g., 100">
+                    </div>
+                    <div>
+                        <label for="long-price" class="block text-sm font-medium mb-1 text-gray-400">Price (₹)</label>
+                        <input type="number" id="long-price" class="form-input bg-gray-600 cursor-not-allowed" placeholder="Auto-filled" readonly>
+                    </div>
+                    <div class="mt-2 text-right">
+                        <p class="text-gray-400">Total Amount: <span id="long-total-amount" class="font-semibold text-white">₹0.00</span></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 !mt-6">
+                        <button id="log-buy" class="btn btn-primary w-full">Buy</button>
+                        <button id="log-sell" class="btn bg-green-600 text-white hover:bg-green-500 w-full">Sell</button>
+                    </div>
+                    <div id="long-result" class="result-area"><span>Enter details and choose an action.</span></div>
+                </div>
+            </div>
+
+            <div class="calculator-card">
+                <h2 class="text-2xl font-semibold mb-6 text-center text-red-400">Short Position</h2>
+                <div class="space-y-4">
+                     <div>
+                        <label for="short-stock-ticker" class="block text-sm font-medium mb-1 text-gray-400">Company Code</label>
+                        <input type="text" id="short-stock-ticker" class="form-input" placeholder="e.g., 102">
+                    </div>
+                    <div>
+                        <label for="short-quantity" class="block text-sm font-medium mb-1 text-gray-400">Quantity</label>
+                        <input type="number" id="short-quantity" class="form-input" placeholder="e.g., 50">
+                    </div>
+                    <div>
+                        <label for="short-price" class="block text-sm font-medium mb-1 text-gray-400">Price (₹)</label>
+                        <input type="number" id="short-price" class="form-input bg-gray-600 cursor-not-allowed" placeholder="Auto-filled" readonly>
+                    </div>
+                    <div class="mt-2 text-right">
+                        <p class="text-gray-400">Total Amount: <span id="short-total-amount" class="font-semibold text-white">₹0.00</span></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 !mt-6">
+                        <button id="log-short" class="btn bg-purple-600 hover:bg-purple-500 text-white w-full">Short Sell</button>
+                        <button id="log-cover" class="btn bg-orange-600 text-white hover:bg-orange-500 w-full">Cover</button>
+                    </div>
+                    <div id="short-result" class="result-area"><span>Enter details and choose an action.</span></div>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-3 grid grid-cols-1 gap-8">
+                <div class="calculator-card">
+                    <h2 class="text-2xl font-semibold mb-4 text-center text-gray-300">Account Summary</h2>
+                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 text-center items-center">
+                         <div>
+                            <label class="block text-sm font-medium text-gray-400">Initial Equity</label>
+                            <span id="initial-balance" class="text-lg font-semibold text-white"></span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400">Equity Balance</label>
+                            <span id="equity-balance" class="text-lg font-semibold text-white"></span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400">Short Proceeds (Held)</label>
+                            <span id="short-proceeds" class="text-lg font-semibold text-white"></span>
+                        </div>
+                    </div>
+                     <h3 class="text-xl font-semibold mt-6 mb-2 text-center text-gray-400">Transaction History</h3>
+                    <div class="overflow-x-auto">
+                         <table class="ledger-table">
+                             <thead>
+                                 <tr>
+                                     <th>Call</th><th>Symbol</th><th>Qty</th><th>Price (₹)</th>
+                                     <th>Amount (₹)</th><th>P/L (₹)</th><th>Round</th> 
+                                 </tr>
+                            </thead>
+                            <tbody id="ledger-body"><tr><td colspan="7" class="p-4 text-center">No transactions yet.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="calculator-card">
+                    <h2 class="text-2xl font-semibold mb-4 text-center text-yellow-400">Portfolio Summary</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-400 data-table">
+                            <thead>
+                                <tr>
+                                    <th>Code</th><th>Position</th><th>Quantity</th><th>Avg. Price (₹)</th>
+                                    <th>Market Price (₹)</th><th>Unrealized P/L (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portfolio-body"><tr><td colspan="6" class="p-4 text-center">Your portfolio is currently empty.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center space-x-4">
+            <button id="reset-all" class="btn bg-red-600 text-white hover:bg-red-500 inline-block w-auto">Reset All</button>
+            <button id="logout" class="btn bg-gray-600 text-white hover:bg-gray-500 inline-block w-auto">Logout</button>
+        </div>
+    </div>
+    
+    <div id="loader" class="flex items-center justify-center min-h-screen text-center text-2xl text-white">Loading Player Data...</div>
+
+    <div id="final-summary-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-sm w-full text-center">
+            <h2 class="text-2xl font-bold text-white mb-4">Final Summary</h2>
+            <p class="text-gray-400 mb-6">All your positions have been liquidated. Your final net worth is:</p>
+            <div class="bg-gray-900 rounded-lg p-4 mb-6">
+                <p id="final-net-worth" class="text-4xl font-bold text-green-400">₹0.00</p>
+            </div>
+            <p class="text-gray-500 text-sm mb-6">Thank you for taking part in the Warangal Trading Ring!</p>
+            <button id="close-summary-btn" class="btn btn-primary w-full">Finish</button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, writeBatch, getDocs, addDoc, serverTimestamp, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMX0otf01Gq7phSuuMix3CvzQaJJ5Cax0",
+            authDomain: "wtr-finwiz.firebaseapp.com",
+            projectId: "wtr-finwiz",
+            storageBucket: "wtr-finwiz.firebasestorage.app",
+            messagingSenderId: "343897117079",
+            appId: "1:343897117079:web:6d2a490c7ca743dcbf34d2",
+            measurementId: "G-BK6WYWHLWX"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const appContainer = document.getElementById('app-container');
+        const loader = document.getElementById('loader');
+        const playerRollEl = document.getElementById('player-roll');
+        const longStockTickerEl = document.getElementById('long-stock-ticker');
+        const longQuantityEl = document.getElementById('long-quantity');
+        const longPriceEl = document.getElementById('long-price');
+        const logBuyBtn = document.getElementById('log-buy');
+        const logSellBtn = document.getElementById('log-sell');
+        const longResultEl = document.getElementById('long-result');
+        const shortStockTickerEl = document.getElementById('short-stock-ticker');
+        const shortQuantityEl = document.getElementById('short-quantity');
+        const shortPriceEl = document.getElementById('short-price');
+        const logShortBtn = document.getElementById('log-short');
+        const logCoverBtn = document.getElementById('log-cover');
+        const shortResultEl = document.getElementById('short-result');
+        const initialBalanceEl = document.getElementById('initial-balance');
+        const equityBalanceEl = document.getElementById('equity-balance');
+        const shortProceedsEl = document.getElementById('short-proceeds');
+        const ledgerBodyEl = document.getElementById('ledger-body');
+        const portfolioBodyEl = document.getElementById('portfolio-body');
+        const resetAllBtn = document.getElementById('reset-all');
+        const logoutBtn = document.getElementById('logout');
+        const roundNumberEl = document.getElementById('round-number');
+        const marketTable = document.getElementById('market-table');
+        const longTotalAmountEl = document.getElementById('long-total-amount');
+        const shortTotalAmountEl = document.getElementById('short-total-amount');
+        const finalSummaryModal = document.getElementById('final-summary-modal');
+        const finalNetWorthEl = document.getElementById('final-net-worth');
+        const closeSummaryBtn = document.getElementById('close-summary-btn');
+
+        const INITIAL_BALANCE = 10000;
+        const MAX_SHORT_LIMIT = 10000; // <<< NEW: Short limit constant
+        let transactions = [];
+        let currentPlayerRoll = '';
+        let unsubscribePlayer, unsubscribeMarket;
+        let marketDataMap = new Map();
+
+        const formatCurrency = (amount, withSign = false) => {
+             const numAmount = Number(amount);
+             if (isNaN(numAmount)) return withSign ? '+₹-.--' : '₹-.--'; 
+             const formatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(numAmount));
+            if (withSign) {
+                return numAmount >= 0 ? `+${formatted}` : `-${formatted}`;
+            }
+            return formatted;
+        };
+        
+        const displayMarketData = (marketInfo) => {
+            const tableHead = marketTable.querySelector('thead');
+            const tableBody = marketTable.querySelector('tbody');
+            roundNumberEl.textContent = marketInfo.round || 'N/A';
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            const data = marketInfo.data;
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Waiting for market data...</td></tr>';
+                marketDataMap.clear(); 
+                recalculateAndRender();
+                return;
+            }
+            const headers = Object.keys(data[0]);
+            const symbolHeader = headers.find(h => h.toUpperCase() === 'COMPANY_CODE' || h.toUpperCase() === 'SYMBOL');
+            const priceHeader = headers.find(h => h.toUpperCase() === 'VALUE' || h.toUpperCase() === 'PRICE');
+            if (!symbolHeader || !priceHeader) {
+                 tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Market data format invalid.</td></tr>';
+                 marketDataMap.clear();
+                 recalculateAndRender();
+                 return;
+            }
+            const newMarketDataMap = new Map();
+             data.forEach(row => {
+                 const symbolKey = row[symbolHeader];
+                 const priceValue = row[priceHeader];
+                 if (symbolKey && !isNaN(parseFloat(priceValue))) {
+                     newMarketDataMap.set(String(symbolKey).toUpperCase(), parseFloat(priceValue));
+                 }
+             });
+             marketDataMap = newMarketDataMap; 
+            const displayHeaders = headers.filter(h => h.toLowerCase() !== 'round'); 
+            const headerRow = document.createElement('tr');
+            displayHeaders.forEach(header => {
+                const th = document.createElement('th');
+                th.className = 'px-4 py-2 sm:px-6 sm:py-3';
+                th.textContent = header.replace(/_/g, ' '); 
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'bg-gray-800 border-b border-gray-700 hover:bg-gray-700/50';
+                displayHeaders.forEach(header => {
+                    const td = document.createElement('td');
+                    td.className = 'px-4 py-3 sm:px-6 sm:py-4';
+                     let cellValue = row[header] || '-';
+                     if (header === priceHeader && !isNaN(parseFloat(cellValue))) {
+                         cellValue = formatCurrency(cellValue).replace('₹',''); 
+                     }
+                    td.textContent = cellValue;
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+             recalculateAndRender(); 
+        };
+        
+        // --- *** MODIFIED UNIFIED FINANCIAL CALCULATION FUNCTION *** ---
+        // This function now handles the new COVER accounting logic.
+        function getFinancialState(transactions) {
+            let equityBalance = INITIAL_BALANCE;
+            let shortProceedsHeld = 0;
+            const ledgerPositions = {}; // For P/L tracking
+            const transactionsForLedger = [];
+
+            const sortedTransactions = [...transactions].sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+
+            sortedTransactions.forEach(tx => {
+                const ledgerTx = { ...tx, pnl: undefined };
+                const symbol = tx.symbol.toUpperCase();
+                
+                if (!ledgerPositions[symbol]) {
+                    ledgerPositions[symbol] = {
+                        long: { qty: 0, totalCost: 0 },
+                        short: { qty: 0, totalCredit: 0 }
+                    };
+                }
+                let longPos = ledgerPositions[symbol].long;
+                let shortPos = ledgerPositions[symbol].short;
+
+                // --- ACCOUNTING & P/L LOGIC ---
+                if (tx.type === 'BUY') {
+                    equityBalance -= tx.amount;
+                    longPos.qty += tx.qty;
+                    longPos.totalCost += tx.amount;
+
+                } else if (tx.type === 'SELL') {
+                    equityBalance += tx.amount; 
+                    if (longPos.qty > 0) {
+                        const avgBuyPrice = longPos.totalCost / longPos.qty;
+                        const sellQty = Math.min(tx.qty, longPos.qty);
+                        ledgerTx.pnl = (tx.price - avgBuyPrice) * sellQty;
+                        longPos.totalCost -= (avgBuyPrice * sellQty); 
+                        longPos.qty -= sellQty;
+                    } else {
+                        ledgerTx.pnl = 0;
+                    }
+
+                } else if (tx.type === 'SHORT') {
+                    shortProceedsHeld += tx.amount;
+                    shortPos.qty += tx.qty;
+                    shortPos.totalCredit += tx.amount;
+
+                } else if (tx.type === 'COVER') {
+                    // <<< *** MODIFIED COVER ACCOUNTING *** >>>
+                    if (shortPos.qty > 0) {
+                        const avgShortPrice = shortPos.totalCredit / shortPos.qty;
+                        const coverQty = Math.min(tx.qty, shortPos.qty);
+                        ledgerTx.pnl = (avgShortPrice - tx.price) * coverQty; // Calculate P/L
+
+                        // FIX: Subtract the *original credit* from proceeds, not the cover cost
+                        const originalCredit = avgShortPrice * coverQty;
+                        shortProceedsHeld -= originalCredit; 
+
+                        // Update short position state
+                        shortPos.totalCredit -= originalCredit; // Reduce credit proportionally
+                        shortPos.qty -= coverQty;
+                    } else {
+                        ledgerTx.pnl = 0; 
+                    }
+                    
+                    if (ledgerTx.pnl !== undefined) {
+                        equityBalance += ledgerTx.pnl; // P/L (profit or loss) goes to Equity
+                    }
+                    // <<< The line 'shortProceedsHeld -= tx.amount;' is now gone
+                }
+                
+                transactionsForLedger.push(ledgerTx);
+            });
+
+            const finalPositions = [];
+            Object.keys(ledgerPositions).forEach(symbol => {
+                const longPos = ledgerPositions[symbol].long;
+                const shortPos = ledgerPositions[symbol].short;
+
+                if (longPos.qty > 0) {
+                    finalPositions.push({
+                        symbol: symbol,
+                        positionType: 'LONG',
+                        qty: longPos.qty,
+                        avgPrice: longPos.totalCost / longPos.qty,
+                        totalCost: longPos.totalCost
+                    });
+                }
+                if (shortPos.qty > 0) {
+                    finalPositions.push({
+                        symbol: symbol,
+                        positionType: 'SHORT',
+                        qty: shortPos.qty, 
+                        avgPrice: shortPos.totalCredit / shortPos.qty,
+                        totalCredit: shortPos.totalCredit
+                    });
+                }
+            });
+
+            return { equityBalance, shortProceedsHeld, positions: finalPositions, transactionsForLedger };
+        }
+        
+        const recalculateAndRender = () => {
+            const { equityBalance, shortProceedsHeld, positions, transactionsForLedger } = getFinancialState(transactions);
+            
+            initialBalanceEl.textContent = formatCurrency(INITIAL_BALANCE);
+            equityBalanceEl.textContent = formatCurrency(equityBalance); 
+            shortProceedsEl.textContent = formatCurrency(shortProceedsHeld);
+
+            ledgerBodyEl.innerHTML = '';
+            if (transactionsForLedger.length > 0) {
+                 [...transactionsForLedger].reverse().forEach(tx => {
+                    const row = document.createElement('tr');
+                    let pnlCell = '<td>-</td>';
+                    if (tx.pnl !== undefined && !isNaN(tx.pnl)) {
+                        const pnlClass = tx.pnl >= 0 ? 'text-pnl-profit' : 'text-pnl-loss';
+                        pnlCell = `<td class="font-semibold ${pnlClass}">${formatCurrency(tx.pnl, true).replace('₹','')}</td>`;
+                    }
+                    row.innerHTML = `
+                        <td class="font-semibold text-${tx.type.toLowerCase()}">${tx.type}</td>
+                        <td>${tx.symbol}</td><td>${tx.qty}</td><td>${formatCurrency(tx.price).replace('₹', '')}</td>
+                        <td>${formatCurrency(tx.amount).replace('₹', '')}</td>${pnlCell}<td>${tx.round || '-'}</td>
+                    `;
+                    ledgerBodyEl.appendChild(row);
+                });
+            } else {
+                 ledgerBodyEl.innerHTML = '<tr><td colspan="7" class="p-4 text-center">No transactions yet.</td></tr>';
+            }
+
+            portfolioBodyEl.innerHTML = ''; 
+            let portfolioHasItems = false;
+            positions.forEach(pos => {
+                portfolioHasItems = true;
+                const row = document.createElement('tr');
+                const marketPrice = marketDataMap.get(pos.symbol.toUpperCase()) || 0;
+                let unrealizedPnl = 0;
+                let positionTypeHTML = '';
+                let displayQty = 0;
+
+                if (pos.positionType === 'LONG') {
+                    positionTypeHTML = '<span class="font-semibold text-sell">LONG</span>';
+                    unrealizedPnl = (marketPrice * pos.qty) - pos.totalCost;
+                    displayQty = pos.qty;
+                } else { // SHORT
+                    positionTypeHTML = '<span class="font-semibold text-short">SHORT</span>';
+                    unrealizedPnl = pos.totalCredit - (marketPrice * pos.qty); 
+                    displayQty = -pos.qty; 
+                }
+                
+                const pnlClass = unrealizedPnl >= 0 ? 'text-pnl-profit' : 'text-pnl-loss';
+                row.innerHTML = `
+                    <td>${pos.symbol}</td>
+                    <td>${positionTypeHTML}</td>
+                    <td>${displayQty}</td>
+                    <td>${formatCurrency(pos.avgPrice).replace('₹', '')}</td>
+                    <td>${marketPrice > 0 ? formatCurrency(marketPrice).replace('₹', '') : '-'}</td>
+                    <td class="font-semibold ${pnlClass}">${formatCurrency(unrealizedPnl, true).replace('₹','')}</td>
+                `;
+                portfolioBodyEl.appendChild(row);
+            });
+
+            if (!portfolioHasItems) {
+                portfolioBodyEl.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Your portfolio is currently empty.</td></tr>';
+            }
+        }; 
+        
+        // <<< *** THIS IS THE MODIFIED FUNCTION *** >>>
+        async function logTransaction(type) {
+            let symbolEl, quantityEl, priceEl, resultEl;
+            if (type === 'BUY' || type === 'SELL') {
+                [symbolEl, quantityEl, priceEl, resultEl] = [longStockTickerEl, longQuantityEl, longPriceEl, longResultEl];
+            } else {
+                [symbolEl, quantityEl, priceEl, resultEl] = [shortStockTickerEl, shortQuantityEl, shortPriceEl, shortResultEl];
+            }
+
+            const symbol = symbolEl.value.trim().toUpperCase();
+            const quantity = parseFloat(quantityEl.value);
+            const marketPrice = marketDataMap.get(symbol); 
+            const price = marketPrice;
+            const currentRound = roundNumberEl.textContent || 'N/A';
+
+            if (!symbol || isNaN(quantity) || quantity <= 0 || marketPrice === undefined) {
+                resultEl.innerHTML = '<span>Enter valid code & quantity.</span>'; resultEl.className = 'result-area loss';
+                return;
+            }
+            const amount = quantity * price;
+
+            // --- *** MODIFIED VALIDATION LOGIC *** ---
+            const { positions, equityBalance, shortProceedsHeld } = getFinancialState(transactions); 
+            
+            const currentLongPos = positions.find(p => p.symbol === symbol && p.positionType === 'LONG') || { qty: 0 };
+            const currentShortPos = positions.find(p => p.symbol === symbol && p.positionType === 'SHORT') || { qty: 0, avgPrice: 0 }; 
+            
+            // --- Quantity checks run first ---
+            if (type === 'SELL' && quantity > currentLongPos.qty) {
+                 resultEl.innerHTML = `<span>Cannot Sell. You only own ${currentLongPos.qty} shares.</span>`; resultEl.className = 'result-area loss';
+                 return;
+            }
+            if (type === 'COVER' && quantity > currentShortPos.qty) {
+                 resultEl.innerHTML = `<span>Cannot Cover. You only shorted ${currentShortPos.qty} shares.</span>`; resultEl.className = 'result-area loss';
+                 return;
+            }
+            
+            // --- Standard Equity/Margin Checks ---
+            if (type === 'BUY' && amount > equityBalance) { 
+                resultEl.innerHTML = `<span>Insufficient Equity. You only have ${formatCurrency(equityBalance)}.</span>`; resultEl.className = 'result-area loss';
+                return;
+            }
+            
+            // <<< NEW CHECK FOR SHORT LIMIT >>>
+            if (type === 'SHORT' && (shortProceedsHeld + amount) > MAX_SHORT_LIMIT) {
+                const availableShort = MAX_SHORT_LIMIT - shortProceedsHeld;
+                resultEl.innerHTML = `<span>Cannot Short. Exceeds limit of ${formatCurrency(MAX_SHORT_LIMIT)}. You only have ${formatCurrency(availableShort)} available.</span>`;
+                resultEl.className = 'result-area loss';
+                return;
+            }
+            
+            // --- Check for covering losses ---
+            if (type === 'COVER') {
+                const avgShortPrice = currentShortPos.avgPrice; 
+                const pnl = (avgShortPrice - price) * quantity; // Calculate P/L for this trade
+                
+                if (pnl < 0 && Math.abs(pnl) > equityBalance) {
+                    // It's a loss, and the loss is greater than our available equity
+                    resultEl.innerHTML = `<span>Cannot Cover. Loss of ${formatCurrency(Math.abs(pnl))} exceeds your equity of ${formatCurrency(equityBalance)}.</span>`; 
+                    resultEl.className = 'result-area loss';
+                    return;
+                }
+            }
+            // --- End of modification ---
+            
+            try {
+                await signInAnonymously(auth); 
+                const transactionsColRef = collection(db, 'participants', currentPlayerRoll, 'transactions');
+                await addDoc(transactionsColRef, { 
+                    type, symbol, qty: quantity, price, amount, round: currentRound,
+                    timestamp: serverTimestamp()
+                });
+                resultEl.innerHTML = `<span>${type} ${quantity} ${symbol} @ ${formatCurrency(price)} logged!</span>`;
+                resultEl.className = 'result-area profit';
+                symbolEl.value = '';
+                quantityEl.value = '';
+                // <<< FIX: Reset total amount for correct panel
+                updateTotalAmount(quantityEl, priceEl, (type === 'BUY' || type === 'SELL') ? longTotalAmountEl : shortTotalAmountEl);
+            } catch (error) {
+                console.error("Error logging transaction:", error);
+                resultEl.innerHTML = '<span>Could not log transaction. Check console.</span>';
+                resultEl.className = 'result-area loss';
+            }
+        } 
+        // <<< *** END OF MODIFIED FUNCTION *** >>>
+
+
+        // --- UNCHANGED FUNCTIONS BELOW ---
+        async function resetAll() {
+             if (confirm("Are you sure you want to delete ALL your transactions? This cannot be undone.")) {
+                 logoutBtn.disabled = true; resetAllBtn.disabled = true;
+                 resetAllBtn.textContent = 'Resetting...';
+                 try {
+                     await signInAnonymously(auth);
+                     const transactionsColRef = collection(db, 'participants', currentPlayerRoll, 'transactions');
+                     const qSnapshot = await getDocs(transactionsColRef);
+                     const batch = writeBatch(db);
+                     qSnapshot.forEach(doc => batch.delete(doc.ref));
+                     await batch.commit();
+                 } catch(error) {
+                     console.error("Error resetting transactions:", error);
+                     alert("Could not reset transactions.");
+                 } finally {
+                     logoutBtn.disabled = false; resetAllBtn.disabled = false;
+                     resetAllBtn.textContent = 'Reset All';
+                 }
+             }
+        }
+        async function handleLogout(){
+             if (confirm("Log out? WARNING: All open positions will be liquidated at CURRENT market prices.")) {
+                 logoutBtn.disabled = true; resetAllBtn.disabled = true;
+                 logoutBtn.textContent = 'Liquidating...';
+                 try {
+                     await signInAnonymously(auth);
+                     const batch = writeBatch(db);
+                     const transactionsColRef = collection(db, 'participants', currentPlayerRoll, 'transactions');
+                     
+                     const { positions } = getFinancialState(transactions); 
+                     
+                     for (const pos of positions) {
+                         const marketPrice = marketDataMap.get(pos.symbol);
+                         if (pos.qty > 0 && marketPrice !== undefined) {
+                             if (pos.positionType === 'LONG') { 
+                                 const amount = pos.qty * marketPrice;
+                                 batch.set(doc(transactionsColRef), { type: 'SELL', symbol: pos.symbol, qty: pos.qty, price: marketPrice, amount, timestamp: serverTimestamp(), autoLiquidate: true });
+                             } else { // Liquidate short
+                                 const amount = pos.qty * marketPrice;
+                                 batch.set(doc(transactionsColRef), { type: 'COVER', symbol: pos.symbol, qty: pos.qty, price: marketPrice, amount, timestamp: serverTimestamp(), autoLiquidate: true });
+                             }
+                         }
+                     }
+                     
+                     await batch.commit();
+                     setTimeout(() => {
+                         const { equityBalance: finalEQ, shortProceedsHeld: finalSP } = getFinancialState(transactions);
+                         finalNetWorthEl.textContent = formatCurrency(finalEQ + finalSP); 
+                         finalSummaryModal.classList.remove('hidden');
+                     }, 1500);
+                 } catch(error) {
+                     console.error("Error during logout liquidation:", error);
+                     alert("An error occurred during liquidation.");
+                     logoutBtn.disabled = false; resetAllBtn.disabled = false;
+                     logoutBtn.textContent = 'Logout';
+                 }
+             }
+        }
+        function updateTotalAmount(quantityEl, priceEl, totalAmountEl) {
+            const quantity = parseFloat(quantityEl.value) || 0;
+            const price = parseFloat(priceEl.value) || 0; 
+            const total = quantity * price;
+            totalAmountEl.textContent = formatCurrency(total);
+        }
+        function handleTickerInput(tickerInputEl, priceInputEl, quantityInputEl, totalAmountEl) {
+             const ticker = tickerInputEl.value.trim().toUpperCase();
+             const marketPrice = marketDataMap.get(ticker);
+             priceInputEl.value = marketPrice !== undefined ? marketPrice : '';
+             updateTotalAmount(quantityInputEl, priceInputEl, totalAmountEl);
+        }
+        window.addEventListener('DOMContentLoaded', async () => {
+            currentPlayerRoll = localStorage.getItem('wtrPlayerRoll');
+            if (!currentPlayerRoll) {
+                window.location.href = './player.html';
+                return;
+            }
+            playerRollEl.textContent = `Player: ${currentPlayerRoll}`;
+            try {
+                await signInAnonymously(auth);
+                const transactionsColRef = collection(db, 'participants', currentPlayerRoll, 'transactions');
+                unsubscribePlayer = onSnapshot(transactionsColRef, (snapshot) => {
+                    transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    recalculateAndRender();
+                    loader.style.display = 'none';
+                    appContainer.style.display = 'block';
+                });
+                const marketDocRef = doc(db, 'market', 'currentRound');
+                unsubscribeMarket = onSnapshot(marketDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        displayMarketData(docSnap.data());
+                    } else {
+                        roundNumberEl.textContent = 'N/A';
+                        marketTable.querySelector('tbody').innerHTML = '<tr><td colspan="6" class="p-4 text-center">Waiting for panel to start a round...</td></tr>';
+                    }
+                });
+            } catch(error) {
+                console.error("Error initializing app:", error);
+                loader.textContent = 'Error: Could not load data. Check console.';
+            }
+        });
+        
+        logBuyBtn.addEventListener('click', () => logTransaction('BUY'));
+        logSellBtn.addEventListener('click', () => logTransaction('SELL'));
+        logShortBtn.addEventListener('click', () => logTransaction('SHORT'));
+        logCoverBtn.addEventListener('click', () => logTransaction('COVER'));
+        resetAllBtn.addEventListener('click', resetAll);
+        logoutBtn.addEventListener('click', handleLogout);
+
+        closeSummaryBtn.addEventListener('click', () => {
+            if(unsubscribePlayer) unsubscribePlayer();
+            if(unsubscribeMarket) unsubscribeMarket();
+            localStorage.removeItem('wtrPlayerRoll');
+            window.location.href = './thankyou.html';
+        });
+
+        longStockTickerEl.addEventListener('input', () => handleTickerInput(longStockTickerEl, longPriceEl, longQuantityEl, longTotalAmountEl));
+        shortStockTickerEl.addEventListener('input', () => handleTickerInput(shortStockTickerEl, shortPriceEl, shortQuantityEl, shortTotalAmountEl));
+        longQuantityEl.addEventListener('input', () => updateTotalAmount(longQuantityEl, longPriceEl, longTotalAmountEl));
+        shortQuantityEl.addEventListener('input', () => updateTotalAmount(shortQuantityEl, shortPriceEl, shortTotalAmountEl));
+    </script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Monitor - WTR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .dashboard-card {
+            background-color: #1f2937; border-radius: 0.75rem;
+            padding: 2rem; border: 1px solid #374151;
+        }
+        .table-container { max-height: 70vh; overflow-y: auto; }
+        .data-table th, .data-table td {
+            padding: 0.75rem 1rem; text-align: left;
+            border-bottom: 1px solid #374151;
+        }
+        .data-table th {
+            background-color: #374151; color: #9ca3af;
+            font-size: 0.875rem; text-transform: uppercase;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .text-pnl-profit { color: #22c55e; }
+        .text-pnl-loss { color: #ef4444; }
+        .loader-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 p-4 lg:p-8">
+
+    <!-- Loading Overlay -->
+    <div id="loader" class="loader-overlay">
+        <div class="text-center">
+            <p class="text-2xl font-semibold text-white">Loading & Calculating Player Data...</p>
+            <p class="text-gray-400 mt-2">This may take a moment with many players.</p>
+        </div>
+    </div>
+
+    <div class="w-full max-w-screen-xl mx-auto">
+        <header class="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-white">Player Monitor</h1>
+                <p class="text-xl text-gray-400 mt-1">Live Leaderboard & Player Status</p>
+            </div>
+            <div class="flex items-center gap-4">
+                 <button id="refresh-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition">
+                    Refresh Leaderboard
+                </button>
+                <a href="control.html" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">
+                    &larr; Back to Market Control
+                </a>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            
+            <div class="dashboard-card">
+                <h2 class="text-2xl font-semibold text-white mb-4">Active Players (Leaderboard)</h2>
+                <div class="table-container">
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Name</th>
+                                <th>Roll No.</th>
+                                <th>Net P/L (₹)</th>
+                                <th>Balance (₹)</th>
+                                <th>Trades</th>
+                            </tr>
+                        </thead>
+                        <tbody id="active-players-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h2 class="text-2xl font-semibold text-white mb-4">Inactive Players (0 Trades)</h2>
+                <div class="table-container">
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Roll No.</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inactive-players-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMX0otf01Gq7phSuuMix3CvzQaJJ5Cax0",
+            authDomain: "wtr-finwiz.firebaseapp.com",
+            projectId: "wtr-finwiz",
+            storageBucket: "wtr-finwiz.firebasestorage.app",
+            messagingSenderId: "343897117079",
+            appId: "1:343897117079:web:6d2a490c7ca743dcbf34d2",
+            measurementId: "G-BK6WYWHLWX"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const loader = document.getElementById('loader');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const activeBody = document.getElementById('active-players-body');
+        const inactiveBody = document.getElementById('inactive-players-body');
+        
+        const INITIAL_BALANCE = 10000;
+
+        const formatCurrency = (amount) => {
+            const numAmount = Number(amount);
+            if (isNaN(numAmount)) return '₹-.--';
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(numAmount);
+        };
+        const formatPnl = (amount) => {
+            const numAmount = Number(amount);
+            if (isNaN(numAmount)) return '<span>-.--</span>';
+            const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(numAmount));
+            if (numAmount > 0) return `<span class="font-semibold text-pnl-profit">+${formatted}</span>`;
+            if (numAmount < 0) return `<span class="font-semibold text-pnl-loss">-${formatted}</span>`;
+            return `<span>${formatted}</span>`;
+        };
+
+        // --- ACCURATE CALCULATION LOGIC (COPIED FROM MAIN.HTML) ---
+        function calculatePlayerState(transactions) {
+            let equityBalance = INITIAL_BALANCE;
+            let positions = {};
+            
+            transactions.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+            
+            transactions.forEach(tx => {
+                if (!tx || !tx.type || !tx.symbol) return;
+                const symbol = tx.symbol.toUpperCase();
+                const qty = tx.qty;
+                const amount = tx.amount;
+
+                if (!positions[symbol]) {
+                    positions[symbol] = { qty: 0, totalCost: 0, totalCredit: 0, isShort: false };
+                }
+                let pos = positions[symbol];
+
+                switch (tx.type) {
+                    case 'BUY':
+                        equityBalance -= amount;
+                        pos.qty += qty;
+                        pos.totalCost += amount;
+                        pos.isShort = false;
+                        break;
+                    case 'SELL':
+                        equityBalance += amount;
+                        if (!pos.isShort && pos.qty > 0) {
+                            const avgBuyPrice = pos.totalCost / pos.qty;
+                            pos.totalCost -= avgBuyPrice * Math.min(qty, pos.qty);
+                            pos.qty -= Math.min(qty, pos.qty);
+                        }
+                        break;
+                    case 'SHORT':
+                        pos.qty += qty;
+                        pos.totalCredit += amount;
+                        pos.isShort = true;
+                        break;
+                    case 'COVER':
+                        if (pos.isShort && pos.qty > 0) {
+                            const avgShortPrice = pos.totalCredit / pos.qty;
+                            const pnl = (avgShortPrice - tx.price) * Math.min(qty, pos.qty);
+                            equityBalance += pnl;
+                            pos.totalCredit -= avgShortPrice * Math.min(qty, pos.qty);
+                            pos.qty -= Math.min(qty, pos.qty);
+                            if (pos.qty <= 0) pos.isShort = false;
+                        }
+                        break;
+                }
+            });
+
+            return {
+                currentBalance: equityBalance,
+                netPnl: equityBalance - INITIAL_BALANCE,
+                transactionCount: transactions.length
+            };
+        }
+
+
+        async function loadAndProcessPlayerData() {
+            loader.style.display = 'flex';
+            activeBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Calculating...</td></tr>';
+            inactiveBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Calculating...</td></tr>';
+
+            try {
+                await signInAnonymously(auth);
+
+                const participantsRef = collection(db, 'participants');
+                const participantsSnapshot = await getDocs(participantsRef);
+                const players = participantsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const transactionPromises = players.map(player => {
+                    const transactionsColRef = collection(db, 'participants', player.id, 'transactions');
+                    return getDocs(transactionsColRef);
+                });
+
+                const transactionSnapshots = await Promise.all(transactionPromises);
+
+                const processedPlayers = players.map((player, index) => {
+                    const transactions = transactionSnapshots[index].docs.map(doc => doc.data());
+                    const state = calculatePlayerState(transactions);
+                    return { ...player, ...state };
+                });
+
+                let activePlayers = [];
+                let inactivePlayers = [];
+                processedPlayers.forEach(p => {
+                    if (p.transactionCount > 0) activePlayers.push(p);
+                    else inactivePlayers.push(p);
+                });
+
+                activePlayers.sort((a, b) => b.netPnl - a.netPnl);
+
+                activeBody.innerHTML = '';
+                if (activePlayers.length > 0) {
+                    activePlayers.forEach((player, index) => {
+                        const row = activeBody.insertRow();
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${player.name || 'N/A'}</td>
+                            <td>${player.rollNumber || player.id}</td>
+                            <td>${formatPnl(player.netPnl)}</td>
+                            <td>${formatCurrency(player.currentBalance)}</td>
+                            <td>${player.transactionCount}</td>
+                        `;
+                    });
+                } else {
+                    activeBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">No active players yet.</td></tr>';
+                }
+                
+                inactiveBody.innerHTML = '';
+                if(inactivePlayers.length > 0) {
+                    inactivePlayers.forEach(player => {
+                        const row = inactiveBody.insertRow();
+                        row.innerHTML = `
+                            <td>${player.name || 'N/A'}</td>
+                            <td>${player.rollNumber || player.id}</td>
+                            <td>${player.email || 'N/A'}</td>
+                        `;
+                    });
+                } else {
+                     inactiveBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">No inactive players found.</td></tr>';
+                }
+
+            } catch (error) {
+                console.error("Error processing player data:", error);
+                activeBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error: Could not load data. Check console.</td></tr>`;
+                inactiveBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">Error: Could not load data. Check console.</td></tr>`;
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        refreshBtn.addEventListener('click', loadAndProcessPlayerData);
+        document.addEventListener('DOMContentLoaded', loadAndProcessPlayerData);
+    </script>
+</body>
+</html>
+
